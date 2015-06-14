@@ -1,0 +1,32 @@
+(const-signal x) or ~x ;; turns a constant value into a signal
+
+(proc-signal p) or ~~p ;; turns a procedure into a signal source that will call it everytime it is sampled
+
+(= x 23)  ;; defines a value or a signal. If used at the top level it defines a global constant. If used else where it adds a binding to the innermost scope.
+(= f x !y #z ~s -> (...))  ;; defines a procedure, macro or signal processor. ! before a variable means this variable must be evaluated before the procedure starts (therefore if it is an expression, it cannot be left as is and must be computed before). # before a variable means it must be left as an expression and stuck everytime the variable is used inside the body of the function. ~ before a variable means it will necessarily be a signal.
+;; Non-prefixed variables can be either values or signals. Their evaluation is left to the implementation.
+
+:something   ;; a keyword
+
+(§ stuff (x 0) (y 12) (z 23)
+    -> (stuff (+ x 1) (* y 2) (+ z x)))  ;; declares a local scope. Can be called again by calling the identifier like a function (scheme let-loop syntax).
+                                            It's the only way to achieve tail recursion
+
+(§> loop (n 0) (acc 0) ->
+    (wait
+      ->(if (< n 4)
+            (loop (+ n 1) (+ acc _))
+         else (emit acc)
+              (loop)))
+    )        ;; A coroutine. It is a local scope that can await and emit values. It's the base of every signal processor, source and sink.
+
+(\ x y z -> (...))  ;; a lambda-procedure. Has some restrictions when compared to top-level procedures.
+->(+ 10 _ _)  ;; a lambda-procedure with implicit arguments
+
+(map \(* _ 2)) (fold 0 \(+ _ _)) (filter \(== (/ _ 2) 0))   ;; Construct signal processors
+
+(sink (\ v -> ...))   ;; Every signal processor chain must end with one.
+
+(+ x y z) (* x y) (- x y z) (/ x y z)  ;; defines arithmetic operators
+
+(== x y z) (>= x y) (< x y)  ;; comparison operators

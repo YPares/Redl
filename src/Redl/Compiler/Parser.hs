@@ -28,6 +28,7 @@ data PSexp = Maybe T.Text :-: Sexp
   deriving (Show, Eq)
 
 instance IsString PSexp where
+  fromString kw@(':':_) = Nothing :-: Atom (Keyword $ KW $ T.pack kw)
   fromString s = Nothing :-: Atom (Symbol $ S $ T.pack s)
 
 sym (Nothing :-: Atom (Symbol s)) = Just s

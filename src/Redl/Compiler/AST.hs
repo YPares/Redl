@@ -27,13 +27,24 @@ split_scope (Scope l) = foldr go ([], []) l
 newtype TypeHint = TH T.Text
   deriving (Show, Eq)
 
-data AST = LocalScope Scope
-         | Coroutine Scope
+data AST = LocalScope Symbol Scope
+         | Coroutine Symbol Scope
          | PrimCall Symbol (Maybe TypeHint) [AST]
-         | ScopeCall Symbol (Maybe TypeHint) [AST]
+         | ProcCall Symbol (Maybe TypeHint) [AST]
          | ExtHook T.Text TypeHint [AST]
          | Var Symbol
   deriving (Show)
+
+{-
+  Primitives are:
+
+- def
+- +, *, -, /, etc.
+- §, §>, §mut
+- Type hints
+-}
+
+reserved_symbols = map BSym ["def", "+", "*", "-", "/", "§", "§>", "§mut", "int", "rational", "bool", "string"]
 
 type MonadAST m = (MonadError String m,
                    MonadReader BoundedScope -- ^ Global scope
@@ -42,13 +53,13 @@ type MonadAST m = (MonadError String m,
                                       -- innermost to outermost
                               m)
 
-look_for_globals :: [PSexp] -> BoundedScope
+look_for_globals :: [SExp] -> BoundedScope
 look_for_globals = foldr go []
-  where go (slist -> ["def", sym -> Just var_name, val_expr]) scope =
+  where go (SList ["def", Atom (Symbol var_name), val_expr]) scope =
           (var_name, undefined) : scope
         go _ scope = scope
 
 make_ast :: MonadAST m
-         => PSexp -> m AST
-make_ast (_ :-: Atom a) = get >> undefined
+         => SExp -> m AST
+make_ast (Atom a) = get >> undefined
 

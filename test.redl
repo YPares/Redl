@@ -8,11 +8,17 @@
 
 :something   ;; a keyword
 
-(§ stuff (x 0) (y 12) (z 23)
-    -> (stuff (+ x 1) (* y 2) (+ z x)))  ;; declares a local scope. Can be called again by calling the identifier like a function (scheme let-loop syntax).
+(§ :as stuff (x 0) (y 12) (z 23)
+  -> (stuff (+ x 1) (* y 2) (+ z x)))  ;; declares a local scope. Can be called again by calling the identifier like a function (scheme let-loop syntax).
                                             It's the only way to achieve tail recursion
 
-(§> loop (n 0) (acc 0) ->
+(§ (plop (§> :as loop (x 10) (y 34) (z 2)
+             -> ))
+   (x 10)
+   -> (ergt plop x))
+   
+
+(§> :as loop (n 0) (acc 0) ->
     (wait
       ->(if (< n 4)
             (loop (+ n 1) (+ acc _))
@@ -30,3 +36,5 @@
 (+ x y z) (* x y) (- x y z) (/ x y z)  ;; defines arithmetic operators
 
 (== x y z) (>= x y) (< x y)  ;; comparison operators
+
+(float (ext "sin" 34.12))  ;; calling an external (here, C) procedure

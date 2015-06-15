@@ -10,34 +10,31 @@ import Data.String (IsString(..))
 
 
 data Atom = Symbol Symbol
+          | PrefixedSymbol T.Text Symbol
+          | Prefix
           | Keyword Keyword
           | Number S.Scientific
           | String T.Text
   deriving (Show, Read, Eq, Ord)
 
-newtype Symbol = S T.Text
+data Symbol = BSym T.Text
+            | NsSym [T.Text] T.Text
   deriving (Show, Read, Eq, Ord)
 newtype Keyword = KW T.Text
   deriving (Show, Read, Eq, Ord)
 
-data Sexp = Sexp [PSexp]
+data SExp = SList [SExp]
+          | PrefixedSList T.Text [SExp]
           | Atom Atom
   deriving (Show, Eq)
 
-data PSexp = Maybe T.Text :-: Sexp
-  deriving (Show, Eq)
+instance IsString SExp where
+  fromString s = case parseOnly sexp (T.pack s) of
+                  Right s -> s
+                  _ -> error "No parse."
 
-instance IsString PSexp where
-  fromString kw@(':':_) = Nothing :-: Atom (Keyword $ KW $ T.pack kw)
-  fromString s = Nothing :-: Atom (Symbol $ S $ T.pack s)
-
-sym (Nothing :-: Atom (Symbol s)) = Just s
-sym _ = Nothing
-
-slist (Nothing :-: Sexp l) = l
-slist _ = []
-
-sexp_prefix = choice $ map string ["#", "\\", "~", "!"]
+sexp_prefix = choice $ map string ["#", "\\", "~", "!", "'", ","]
+symbol_prefix = choice $ map string ["!", "#", "~", "'", ","]
 
 blankspace = many' space
 sexp_opening = char '(' <* blankspace
@@ -50,21 +47,30 @@ hexa = cnv <$> (string "0x" *>
 str = char '"' *> takeTill (== '"') <* char '"'
 
 bare_symbol = choice $ [T.pack <$> many1' (letter <|> digit <|>
-                                    (choice $ map char "_-+*/<>=.?"))] ++
-                  map string ["§>", "§"]
-keyword = char ':' *> (T.cons ':' <$> bare_symbol)
-atom = Atom <$> ((Number <$> (hexa <|> scientific))
-                 <|> (String <$> str)
-                 <|> (Keyword . KW <$> keyword)
-                 <|> (Symbol . S <$> bare_symbol))
+                                    (choice $ map char "_-+*~:<>=.?"))] ++
+                        map string ["§>", "§"]
+
+symbol = (NsSym <$> path <*> bare_symbol)
+         <|> (BSym <$> bare_symbol)
+  where path = (:) <$> (bare_symbol <* char '/')
+                   <*> (path <|> pure [])
+
+prefixed_symbol = PrefixedSymbol <$> symbol_prefix <*> symbol
+
+keyword = KW <$> (char ':' *> (T.cons ':' <$> bare_symbol))
+
+atom = (Number <$> (hexa <|> scientific))
+       <|> (String <$> str)
+       <|> (Keyword <$> keyword)
+       <|> (Symbol <$> symbol)
+       <|> prefixed_symbol
 
 list_sexp = do
   sexp_opening
-  inner <- psexp `sepBy1` blankspace
+  inner <- sexp `sepBy1` blankspace
   sexp_closing
-  return $ Sexp inner
+  return inner
 
-mb p = (Just <$> p) <|> pure Nothing
-
-psexp = (:-:) <$> mb sexp_prefix
-              <*> (list_sexp <|> atom)
+sexp = ((PrefixedSList <$> sexp_prefix <*> list_sexp)
+        <|> (SList <$> list_sexp))
+       <|> (Atom <$> atom)

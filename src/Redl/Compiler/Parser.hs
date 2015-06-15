@@ -11,15 +11,12 @@ import Data.String (IsString(..))
 
 data Atom = Symbol Symbol
           | PrefixedSymbol T.Text Symbol
-          | Keyword Keyword
           | Number S.Scientific
           | String T.Text
   deriving (Show, Read, Eq, Ord)
 
 data Symbol = BSym T.Text
             | NsSym [T.Text] T.Text
-  deriving (Show, Read, Eq, Ord)
-newtype Keyword = KW T.Text
   deriving (Show, Read, Eq, Ord)
 
 data SExp = SList [SExp]
@@ -53,16 +50,13 @@ bare_symbol = choice $
 
 symbol = (NsSym <$> path <*> bare_symbol)
          <|> (BSym <$> bare_symbol)
-  where path = (:) <$> (bare_symbol <* char ':')
+  where path = (:) <$> ((bare_symbol <|> pure "") <* char ':')
                    <*> (path <|> pure [])
 
 prefixed_symbol = PrefixedSymbol <$> symbol_prefix <*> symbol
 
-keyword = KW <$> (char ':' *> (T.cons ':' <$> bare_symbol))
-
 atom = (Number <$> (hexa <|> scientific))
        <|> (String <$> str)
-       <|> (Keyword <$> keyword)
        <|> prefixed_symbol
        <|> (Symbol <$> symbol)
 

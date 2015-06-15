@@ -45,13 +45,15 @@ hexa = cnv <$> (string "0x" *>
 
 str = char '"' *> takeTill (== '"') <* char '"'
 
-bare_symbol = choice $ [T.pack <$> many1' (letter <|> digit <|>
-                                    (choice $ map char "_-+*~:<>=.?"))] ++
-                        map string ["§>", "§"]
+bare_symbol = choice $
+  [T.pack <$> many1' (letter <|> digit <|>
+                      (choice $ map char ok_chars))] ++
+   map string ["§>", "§"]
+  where ok_chars = "_-+*/~<>=.?"
 
 symbol = (NsSym <$> path <*> bare_symbol)
          <|> (BSym <$> bare_symbol)
-  where path = (:) <$> (bare_symbol <* char '/')
+  where path = (:) <$> (bare_symbol <* char ':')
                    <*> (path <|> pure [])
 
 prefixed_symbol = PrefixedSymbol <$> symbol_prefix <*> symbol
@@ -61,8 +63,8 @@ keyword = KW <$> (char ':' *> (T.cons ':' <$> bare_symbol))
 atom = (Number <$> (hexa <|> scientific))
        <|> (String <$> str)
        <|> (Keyword <$> keyword)
-       <|> (Symbol <$> symbol)
        <|> prefixed_symbol
+       <|> (Symbol <$> symbol)
 
 list_sexp = do
   sexp_opening

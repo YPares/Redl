@@ -11,7 +11,6 @@ import Data.String (IsString(..))
 
 data Atom = Symbol Symbol
           | PrefixedSymbol T.Text Symbol
-          | Prefix
           | Keyword Keyword
           | Number S.Scientific
           | String T.Text
